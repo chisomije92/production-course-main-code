@@ -8,8 +8,8 @@ from langgraph.checkpoint.memory import MemorySaver
 from typing_extensions import TypedDict
 from typing import Literal
 from langchain_openai import ChatOpenAI
+from langchain_core.runnables import RunnableConfig
 from dotenv import load_dotenv
-import time
 
 load_dotenv()
 
@@ -50,7 +50,7 @@ def demo_interrupt_for_approval():
 
         response = llm.invoke(f"Create a professional response for: {state['request']}")
 
-        print(f"   Draft generated ({len(response.content.split())} words)")
+        print(f"   Draft generated ({len(response.text.split())} words)")
         print(f"   Preview: {response.content[:100]}...")
         return {"draft": response.content}
 
@@ -63,7 +63,7 @@ def demo_interrupt_for_approval():
             else "   Feedback: (none yet)"
         )
         # This node is where we'll interrupt
-        return state
+        return dict(state)
 
     def finalize(state: ApprovalState) -> dict:
         step_print("📦", "FINALIZE NODE", "Entering finalize node...")
@@ -81,7 +81,7 @@ def demo_interrupt_for_approval():
                 f"Draft: {state['draft']}\n\n"
                 f"Feedback: {state['feedback']}"
             )
-            print(f"   Revised draft generated ({len(response.content.split())} words)")
+            print(f"   Revised draft generated ({len(response.text.split())} words)")
             return {"final": response.content}
 
     graph = StateGraph(ApprovalState)
@@ -109,7 +109,7 @@ def demo_interrupt_for_approval():
     print("   Interrupt set BEFORE: 'approval' node")
 
     # Configuration for this thread
-    config = {"configurable": {"thread_id": "demo-1"}}
+    config: RunnableConfig = {"configurable": {"thread_id": "demo-1"}}
 
     # ─── PHASE 1: Run until interrupt ───
     phase_banner(1, "RUN UNTIL INTERRUPT")
@@ -205,7 +205,7 @@ def demo_iterative_review():
 
         if not state["review_comments"]:
             print(f"   No comments to apply. Passing through.")
-            return state
+            return dict(state)
 
         feedback = state["review_comments"][-1]
         print(f'   Feedback to apply: "{feedback}"')
@@ -218,7 +218,7 @@ def demo_iterative_review():
             f"Feedback: {feedback}"
         )
 
-        print(f"   Revised document ({len(response.content.split())} words)")
+        print(f"   Revised document ({len(response.text.split())} words)")
         print(f"   Preview: {response.content[:100]}...")
 
         return {
@@ -268,7 +268,7 @@ def demo_iterative_review():
     )
     print("   Interrupt set BEFORE: 'submit' node (fires EVERY loop)")
 
-    config = {"configurable": {"thread_id": "review-1"}}
+    config: RunnableConfig = {"configurable": {"thread_id": "review-1"}}
 
     # ─── ROUND 0: Initial submission ───
     phase_banner(0, "INITIAL SUBMISSION")
